@@ -344,54 +344,65 @@ def update_slide2_text(path, data):
         c=c.replace(old,new,1)
     with open(path,'w',encoding='utf-8') as f: f.write(c)
 
-def update_donut_chart(path, value, max_val=30):
-    """도넛 차트: [실제값, 0, 나머지] 구조"""
-    with open(path,'r',encoding='utf-8') as f: c=f.read()
+def update_donut_chart(chart_path, xl_path, value, max_val=30):
+    """도넛 차트 XML + 엑셀 임베딩 수정"""
+    import openpyxl
     remainder = max_val - value
-    # idx=0: 실제값, idx=1: 0(간격), idx=2: 나머지
+    with open(chart_path,'r',encoding='utf-8') as f: c=f.read()
     def replace_pt(xml, idx, new_val):
-        pattern = f'<c:pt idx="{idx}">\\s*<c:v>[^<]*</c:v>'
-        replacement = f'<c:pt idx="{idx}"><c:v>{new_val}</c:v>'
-        return re.sub(pattern, replacement, xml)
+        pattern = f'<c:pt idx="{idx}"><c:v>[^<]*</c:v>'
+        return re.sub(pattern, f'<c:pt idx="{idx}"><c:v>{new_val}</c:v>', xml)
     c = replace_pt(c, 0, value)
     c = replace_pt(c, 1, 0)
     c = replace_pt(c, 2, remainder)
-    with open(path,'w',encoding='utf-8') as f: f.write(c)
+    with open(chart_path,'w',encoding='utf-8') as f: f.write(c)
+    wb = openpyxl.load_workbook(xl_path)
+    ws = wb.active
+    ws.cell(row=1, column=1, value=value)
+    ws.cell(row=2, column=1, value=0)
+    ws.cell(row=3, column=1, value=remainder)
+    wb.save(xl_path)
 
-def update_bar_chart(path, ability, social, coach, physical):
-    """스포츠자신감 막대그래프 (chart7): 4개 값 교체"""
-    with open(path,'r',encoding='utf-8') as f: c=f.read()
+def update_bar_chart(chart_path, xl_path, ability, social, coach, physical):
+    """스포츠자신감 막대그래프 XML + 엑셀 임베딩 수정"""
+    import openpyxl
     values = [ability, social, coach, physical]
-    # 기존 값: 4.5, 3.7, 3, 4.5 순서로 교체
+    with open(chart_path,'r',encoding='utf-8') as f: c=f.read()
     old_vals = [r'<c:v>4\.5</c:v>', r'<c:v>3\.7</c:v>', r'<c:v>3</c:v>', r'<c:v>4\.5</c:v>']
-    for old, new_v in zip(old_vals, values):
-        c = re.sub(old, f'<c:v>{round(new_v,4)}</c:v>', c, count=1)
-    with open(path,'w',encoding='utf-8') as f: f.write(c)
+    for old_v, new_v in zip(old_vals, values):
+        c = re.sub(old_v, f'<c:v>{round(new_v,4)}</c:v>', c, count=1)
+    with open(chart_path,'w',encoding='utf-8') as f: f.write(c)
+    wb = openpyxl.load_workbook(xl_path)
+    ws = wb.active
+    ws.cell(row=2, column=2, value=ability)
+    ws.cell(row=3, column=2, value=social)
+    ws.cell(row=4, column=2, value=coach)
+    ws.cell(row=5, column=2, value=physical)
+    wb.save(xl_path)
 
-def update_radar_chart(path, self_talk, auto, imagery, relax, goal, emotion, negative, distract):
-    """수행전략 레이더 차트 (chart8): 검사결과 8개 값 교체"""
-    with open(path,'r',encoding='utf-8') as f: c=f.read()
+def update_radar_chart(chart_path, xl_path, self_talk, auto, imagery, relax, goal, emotion, negative, distract):
+    """수행전략 레이더 차트 XML + 엑셀 임베딩 수정"""
+    import openpyxl
     new_vals = [self_talk, auto, imagery, relax, goal, emotion, negative, distract]
-    # 기존 검사결과 값 (이상적결과 5,5,5,5,5,1,1,1 다음에 나오는 8개)
-    old_vals = [
-        r'<c:v>3</c:v>',
-        r'<c:v>2\.3333333333333335</c:v>',
-        r'<c:v>4</c:v>',
-        r'<c:v>2\.75</c:v>',
-        r'<c:v>4</c:v>',
-        r'<c:v>1\.75</c:v>',
-        r'<c:v>5</c:v>',
-        r'<c:v>3\.3333333333333335</c:v>',
-    ]
-    for old, new_v in zip(old_vals, new_vals):
-        c = re.sub(old, f'<c:v>{round(new_v,4)}</c:v>', c, count=1)
-    with open(path,'w',encoding='utf-8') as f: f.write(c)
+    with open(chart_path,'r',encoding='utf-8') as f: c=f.read()
+    search_from = c.find('<c:v>검사 결과</c:v>')
+    if search_from == -1:
+        search_from = c.find('<c:v>검사결과</c:v>')
+    for new_v in new_vals:
+        m = re.search(r'<c:v>[^<]+</c:v>', c[search_from:])
+        if m:
+            s = search_from + m.start()
+            e = search_from + m.end()
+            replacement = f'<c:v>{round(new_v,4)}</c:v>'
+            c = c[:s] + replacement + c[e:]
+            search_from = s + len(replacement)
+    with open(chart_path,'w',encoding='utf-8') as f: f.write(c)
+    wb = openpyxl.load_workbook(xl_path)
+    ws = wb.active
+    for i, v in enumerate(new_vals, start=2):
+        ws.cell(row=i, column=3, value=round(v, 4))
+    wb.save(xl_path)
 
-def replace_para(c, anchor, new_text):
-    idx=c.find(anchor)
-    if idx==-1: return c
-    ps=c.rfind('<a:p>',0,idx); pe=c.find('</a:p>',idx)+len('</a:p>')
-    return c[:ps]+make_para(new_text)+c[pe:]
 
 def update_slide3(path, data, commentary=None):
     with open(path,'r',encoding='utf-8') as f: c=f.read()
@@ -503,20 +514,19 @@ def _apply_data(work_dir, data):
     # 슬라이드2: 텍스트 숫자
     update_slide2_text(os.path.join(slides, "slide2.xml"), data)
 
-    # 도넛 차트 (경쟁상태불안 3개)
-    update_donut_chart(os.path.join(charts, "chart4.xml"), data['cognitive_anxiety'])   # 인지불안
-    update_donut_chart(os.path.join(charts, "chart5.xml"), data['state_confidence'])    # 상태자신감
-    update_donut_chart(os.path.join(charts, "chart6.xml"), data['somatic_anxiety'])     # 신체불안
+    embeddings = os.path.join(work_dir, "ppt", "embeddings")
 
-    # 스포츠자신감 막대그래프
+    # 스포츠자신감 막대그래프 - XML + 엑셀 임베딩 동시 수정
     update_bar_chart(
         os.path.join(charts, "chart7.xml"),
+        os.path.join(embeddings, "Microsoft_Excel_Worksheet6.xlsx"),
         data['sc_ability'], data['sc_social'], data['sc_coach'], data['sc_physical']
     )
 
-    # 수행전략 레이더 차트
+    # 수행전략 레이더 차트 - XML + 엑셀 임베딩 동시 수정
     update_radar_chart(
         os.path.join(charts, "chart8.xml"),
+        os.path.join(embeddings, "Microsoft_Excel_Worksheet7.xlsx"),
         data['ps_self_talk'], data['ps_auto'], data['ps_imagery'], data['ps_relax'],
         data['ps_goal'], data['ps_emotion'], data['ps_negative'], data['ps_distract']
     )
@@ -601,20 +611,19 @@ def _apply_data(work_dir, data):
     # 슬라이드2: 텍스트 숫자
     update_slide2_text(os.path.join(slides, "slide2.xml"), data)
 
-    # 도넛 차트 (경쟁상태불안 3개)
-    update_donut_chart(os.path.join(charts, "chart4.xml"), data['cognitive_anxiety'])   # 인지불안
-    update_donut_chart(os.path.join(charts, "chart5.xml"), data['state_confidence'])    # 상태자신감
-    update_donut_chart(os.path.join(charts, "chart6.xml"), data['somatic_anxiety'])     # 신체불안
+    embeddings = os.path.join(work_dir, "ppt", "embeddings")
 
-    # 스포츠자신감 막대그래프
+    # 스포츠자신감 막대그래프 - XML + 엑셀 임베딩 동시 수정
     update_bar_chart(
         os.path.join(charts, "chart7.xml"),
+        os.path.join(embeddings, "Microsoft_Excel_Worksheet6.xlsx"),
         data['sc_ability'], data['sc_social'], data['sc_coach'], data['sc_physical']
     )
 
-    # 수행전략 레이더 차트
+    # 수행전략 레이더 차트 - XML + 엑셀 임베딩 동시 수정
     update_radar_chart(
         os.path.join(charts, "chart8.xml"),
+        os.path.join(embeddings, "Microsoft_Excel_Worksheet7.xlsx"),
         data['ps_self_talk'], data['ps_auto'], data['ps_imagery'], data['ps_relax'],
         data['ps_goal'], data['ps_emotion'], data['ps_negative'], data['ps_distract']
     )
@@ -698,20 +707,19 @@ def _apply_data(work_dir, data):
     # 슬라이드2: 텍스트 숫자
     update_slide2_text(os.path.join(slides, "slide2.xml"), data)
 
-    # 도넛 차트 (경쟁상태불안 3개)
-    update_donut_chart(os.path.join(charts, "chart4.xml"), data['cognitive_anxiety'])   # 인지불안
-    update_donut_chart(os.path.join(charts, "chart5.xml"), data['state_confidence'])    # 상태자신감
-    update_donut_chart(os.path.join(charts, "chart6.xml"), data['somatic_anxiety'])     # 신체불안
+    embeddings = os.path.join(work_dir, "ppt", "embeddings")
 
-    # 스포츠자신감 막대그래프
+    # 스포츠자신감 막대그래프 - XML + 엑셀 임베딩 동시 수정
     update_bar_chart(
         os.path.join(charts, "chart7.xml"),
+        os.path.join(embeddings, "Microsoft_Excel_Worksheet6.xlsx"),
         data['sc_ability'], data['sc_social'], data['sc_coach'], data['sc_physical']
     )
 
-    # 수행전략 레이더 차트
+    # 수행전략 레이더 차트 - XML + 엑셀 임베딩 동시 수정
     update_radar_chart(
         os.path.join(charts, "chart8.xml"),
+        os.path.join(embeddings, "Microsoft_Excel_Worksheet7.xlsx"),
         data['ps_self_talk'], data['ps_auto'], data['ps_imagery'], data['ps_relax'],
         data['ps_goal'], data['ps_emotion'], data['ps_negative'], data['ps_distract']
     )
@@ -796,20 +804,19 @@ def _apply_data(work_dir, data):
     # 슬라이드2: 텍스트 숫자
     update_slide2_text(os.path.join(slides, "slide2.xml"), data)
 
-    # 도넛 차트 (경쟁상태불안 3개)
-    update_donut_chart(os.path.join(charts, "chart4.xml"), data['cognitive_anxiety'])   # 인지불안
-    update_donut_chart(os.path.join(charts, "chart5.xml"), data['state_confidence'])    # 상태자신감
-    update_donut_chart(os.path.join(charts, "chart6.xml"), data['somatic_anxiety'])     # 신체불안
+    embeddings = os.path.join(work_dir, "ppt", "embeddings")
 
-    # 스포츠자신감 막대그래프
+    # 스포츠자신감 막대그래프 - XML + 엑셀 임베딩 동시 수정
     update_bar_chart(
         os.path.join(charts, "chart7.xml"),
+        os.path.join(embeddings, "Microsoft_Excel_Worksheet6.xlsx"),
         data['sc_ability'], data['sc_social'], data['sc_coach'], data['sc_physical']
     )
 
-    # 수행전략 레이더 차트
+    # 수행전략 레이더 차트 - XML + 엑셀 임베딩 동시 수정
     update_radar_chart(
         os.path.join(charts, "chart8.xml"),
+        os.path.join(embeddings, "Microsoft_Excel_Worksheet7.xlsx"),
         data['ps_self_talk'], data['ps_auto'], data['ps_imagery'], data['ps_relax'],
         data['ps_goal'], data['ps_emotion'], data['ps_negative'], data['ps_distract']
     )
