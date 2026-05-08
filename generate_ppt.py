@@ -445,24 +445,30 @@ def generate_ppt_bytes(pptx_bytes, data):
     import tempfile
     work_dir = tempfile.mkdtemp()
     try:
-        with zipfile.ZipFile(BytesIO(pptx_bytes)) as z:
-            z.extractall(work_dir)
-        _apply_data(work_dir, data)
-        # 원본 파일의 압축 방식 정보 읽기
-        orig_compress = {}
+        # 원본 zip 메타데이터 보존
         with zipfile.ZipFile(BytesIO(pptx_bytes)) as orig_z:
-            for info in orig_z.infolist():
-                orig_compress[info.filename] = info.compress_type
+            orig_order = orig_z.namelist()
+            orig_info = {i.filename: i for i in orig_z.infolist()}
+            orig_z.extractall(work_dir)
+
+        _apply_data(work_dir, data)
 
         buf = BytesIO()
-        with zipfile.ZipFile(buf, 'w') as z:
-            for root, dirs, files in os.walk(work_dir):
-                for file in files:
-                    fp = os.path.join(root, file)
-                    arcname = os.path.relpath(fp, work_dir)
-                    # 원본과 동일한 압축 방식 사용 (폰트/이미지 등은 비압축 유지)
-                    compress = orig_compress.get(arcname, zipfile.ZIP_DEFLATED)
-                    z.write(fp, arcname, compress_type=compress)
+        with zipfile.ZipFile(buf, 'w') as zout:
+            # 원본 순서대로 파일 추가 (PowerPoint는 순서에 민감)
+            for arcname in orig_order:
+                fp = os.path.join(work_dir, arcname.replace('/', os.sep))
+                if not os.path.isfile(fp):
+                    continue
+                orig = orig_info[arcname]
+                with open(fp, 'rb') as f:
+                    data_bytes = f.read()
+                info = zipfile.ZipInfo(arcname)
+                info.compress_type = orig.compress_type
+                info.date_time = orig.date_time
+                info.external_attr = orig.external_attr
+                zout.writestr(info, data_bytes)
+
         buf.seek(0)
         return buf.read()
     finally:
@@ -537,24 +543,30 @@ def generate_ppt_bytes(pptx_bytes, data):
     import tempfile
     work_dir = tempfile.mkdtemp()
     try:
-        with zipfile.ZipFile(BytesIO(pptx_bytes)) as z:
-            z.extractall(work_dir)
-        _apply_data(work_dir, data)
-        # 원본 파일의 압축 방식 정보 읽기
-        orig_compress = {}
+        # 원본 zip 메타데이터 보존
         with zipfile.ZipFile(BytesIO(pptx_bytes)) as orig_z:
-            for info in orig_z.infolist():
-                orig_compress[info.filename] = info.compress_type
+            orig_order = orig_z.namelist()
+            orig_info = {i.filename: i for i in orig_z.infolist()}
+            orig_z.extractall(work_dir)
+
+        _apply_data(work_dir, data)
 
         buf = BytesIO()
-        with zipfile.ZipFile(buf, 'w') as z:
-            for root, dirs, files in os.walk(work_dir):
-                for file in files:
-                    fp = os.path.join(root, file)
-                    arcname = os.path.relpath(fp, work_dir)
-                    # 원본과 동일한 압축 방식 사용 (폰트/이미지 등은 비압축 유지)
-                    compress = orig_compress.get(arcname, zipfile.ZIP_DEFLATED)
-                    z.write(fp, arcname, compress_type=compress)
+        with zipfile.ZipFile(buf, 'w') as zout:
+            # 원본 순서대로 파일 추가 (PowerPoint는 순서에 민감)
+            for arcname in orig_order:
+                fp = os.path.join(work_dir, arcname.replace('/', os.sep))
+                if not os.path.isfile(fp):
+                    continue
+                orig = orig_info[arcname]
+                with open(fp, 'rb') as f:
+                    data_bytes = f.read()
+                info = zipfile.ZipInfo(arcname)
+                info.compress_type = orig.compress_type
+                info.date_time = orig.date_time
+                info.external_attr = orig.external_attr
+                zout.writestr(info, data_bytes)
+
         buf.seek(0)
         return buf.read()
     finally:
@@ -628,24 +640,30 @@ def generate_ppt_bytes(pptx_bytes, data):
     import tempfile
     work_dir = tempfile.mkdtemp()
     try:
-        with zipfile.ZipFile(BytesIO(pptx_bytes)) as z:
-            z.extractall(work_dir)
-        _apply_data(work_dir, data)
-        # 원본 파일의 압축 방식 정보 읽기
-        orig_compress = {}
+        # 원본 zip 메타데이터 보존
         with zipfile.ZipFile(BytesIO(pptx_bytes)) as orig_z:
-            for info in orig_z.infolist():
-                orig_compress[info.filename] = info.compress_type
+            orig_order = orig_z.namelist()
+            orig_info = {i.filename: i for i in orig_z.infolist()}
+            orig_z.extractall(work_dir)
+
+        _apply_data(work_dir, data)
 
         buf = BytesIO()
-        with zipfile.ZipFile(buf, 'w') as z:
-            for root, dirs, files in os.walk(work_dir):
-                for file in files:
-                    fp = os.path.join(root, file)
-                    arcname = os.path.relpath(fp, work_dir)
-                    # 원본과 동일한 압축 방식 사용 (폰트/이미지 등은 비압축 유지)
-                    compress = orig_compress.get(arcname, zipfile.ZIP_DEFLATED)
-                    z.write(fp, arcname, compress_type=compress)
+        with zipfile.ZipFile(buf, 'w') as zout:
+            # 원본 순서대로 파일 추가 (PowerPoint는 순서에 민감)
+            for arcname in orig_order:
+                fp = os.path.join(work_dir, arcname.replace('/', os.sep))
+                if not os.path.isfile(fp):
+                    continue
+                orig = orig_info[arcname]
+                with open(fp, 'rb') as f:
+                    data_bytes = f.read()
+                info = zipfile.ZipInfo(arcname)
+                info.compress_type = orig.compress_type
+                info.date_time = orig.date_time
+                info.external_attr = orig.external_attr
+                zout.writestr(info, data_bytes)
+
         buf.seek(0)
         return buf.read()
     finally:
@@ -720,24 +738,30 @@ def generate_ppt_bytes(pptx_bytes, data):
     import tempfile
     work_dir = tempfile.mkdtemp()
     try:
-        with zipfile.ZipFile(BytesIO(pptx_bytes)) as z:
-            z.extractall(work_dir)
-        _apply_data(work_dir, data)
-        # 원본 파일의 압축 방식 정보 읽기
-        orig_compress = {}
+        # 원본 zip 메타데이터 보존
         with zipfile.ZipFile(BytesIO(pptx_bytes)) as orig_z:
-            for info in orig_z.infolist():
-                orig_compress[info.filename] = info.compress_type
+            orig_order = orig_z.namelist()
+            orig_info = {i.filename: i for i in orig_z.infolist()}
+            orig_z.extractall(work_dir)
+
+        _apply_data(work_dir, data)
 
         buf = BytesIO()
-        with zipfile.ZipFile(buf, 'w') as z:
-            for root, dirs, files in os.walk(work_dir):
-                for file in files:
-                    fp = os.path.join(root, file)
-                    arcname = os.path.relpath(fp, work_dir)
-                    # 원본과 동일한 압축 방식 사용 (폰트/이미지 등은 비압축 유지)
-                    compress = orig_compress.get(arcname, zipfile.ZIP_DEFLATED)
-                    z.write(fp, arcname, compress_type=compress)
+        with zipfile.ZipFile(buf, 'w') as zout:
+            # 원본 순서대로 파일 추가 (PowerPoint는 순서에 민감)
+            for arcname in orig_order:
+                fp = os.path.join(work_dir, arcname.replace('/', os.sep))
+                if not os.path.isfile(fp):
+                    continue
+                orig = orig_info[arcname]
+                with open(fp, 'rb') as f:
+                    data_bytes = f.read()
+                info = zipfile.ZipInfo(arcname)
+                info.compress_type = orig.compress_type
+                info.date_time = orig.date_time
+                info.external_attr = orig.external_attr
+                zout.writestr(info, data_bytes)
+
         buf.seek(0)
         return buf.read()
     finally:
